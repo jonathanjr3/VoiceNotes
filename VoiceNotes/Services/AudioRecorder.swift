@@ -1,0 +1,301 @@
+//
+//  AudioRecorder.swift
+//  VoiceNotes
+//
+//  Created by Jonathan Rajya on 07/07/2025.
+//
+
+import SwiftUI
+import AVFoundation
+import SwiftData
+import Speech
+
+@Observable final class AudioRecorder: NSObject {
+    var isRecording = false
+    var isPaused = false
+    var recordingDuration: TimeInterval = 0.0
+    var liveTranscript = ""
+    var showErrorAlert = false
+    var errorMessage = ""
+    var audioLevels: [Float] = Array(repeating: 0.0, count: 50)
+    
+    @ObservationIgnored @AppStorage("audioQuality") private var audioQualitySetting: AudioQuality.RawValue = AudioQuality.medium.rawValue
+    
+    private var recordingTimer: Timer?
+    private var modelContext: ModelContext?
+    
+    var onRecordingFinished: (() -> Void)?
+    
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var audioEngine = AVAudioEngine()
+    private var tempSegmentTimings: [SegmentTiming] = []
+    
+    private var audioFile: AVAudioFile?
+    private var tempAudioFilename: String?
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange), name: AVAudioSession.routeChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption), name: AVAudioSession.interruptionNotification, object: nil)
+    }
+    
+    func setup(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    func startRecording() {
+        guard !isRecording else { return }
+        
+        guard hasSufficientStorage() else {
+            showError("Not enough storage space.")
+            return
+        }
+        
+        let recordingSession = AVAudioSession.sharedInstance()
+        do {
+            try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .allowBluetooth, .allowBluetoothA2DP])
+            try recordingSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            showError("Failed to set up recording session: \(error.localizedDescription)")
+            return
+        }
+        
+        let inputNode = audioEngine.inputNode
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else {
+            showError("Unable to create recognition request.")
+            return
+        }
+        recognitionRequest.shouldReportPartialResults = true
+        
+        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+            guard let self = self else { return }
+            
+            var isFinal = false
+            if let result = result {
+                self.liveTranscript = result.bestTranscription.formattedString
+                self.tempSegmentTimings = result.bestTranscription.segments.map { segment in
+                    SegmentTiming(text: segment.substring, startTime: segment.timestamp)
+                }
+                isFinal = result.isFinal
+            }
+            
+            if error != nil || isFinal {
+                self.stopAndSaveRecording()
+            }
+        }
+        
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        self.tempAudioFilename = "\(Date().toString(dateFormat: "dd-MM-YY_'at'_HH:mm:ss")).m4a"
+        let audioFileURL = documentPath.appendingPathComponent(self.tempAudioFilename!)
+        
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        let selectedQuality = AudioQuality(rawValue: audioQualitySetting) ?? .medium
+        var outputSettings = selectedQuality.settings
+        outputSettings[AVSampleRateKey] = inputFormat.sampleRate
+        outputSettings[AVNumberOfChannelsKey] = inputFormat.channelCount
+        
+        do {
+            self.audioFile = try AVAudioFile(forWriting: audioFileURL, settings: outputSettings)
+        } catch {
+            showError("Failed to create audio file: \(error.localizedDescription)")
+            return
+        }
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] (buffer, time) in
+            guard let self = self else { return }
+            
+            self.recognitionRequest?.append(buffer)
+            
+            do {
+                try self.audioFile?.write(from: buffer)
+            } catch {
+                print("Error writing audio buffer to file: \(error)")
+            }
+            
+            self.updateAudioLevels(from: buffer)
+        }
+        
+        do {
+            try audioEngine.start()
+            recordingDuration = 0.0
+            isRecording = true
+            isPaused = false
+            startTimer()
+        } catch {
+            showError("Could not start audio engine: \(error.localizedDescription)")
+        }
+    }
+    
+    func pauseRecording() {
+        guard isRecording, !isPaused else { return }
+        audioEngine.pause()
+        stopTimer()
+        isPaused = true
+    }
+    
+    func resumeRecording() {
+        guard isRecording, isPaused else { return }
+        do {
+            try audioEngine.start()
+            startTimer()
+            isPaused = false
+        } catch {
+            showError("Failed to resume recording.")
+        }
+    }
+    
+    func stopRecording() {
+        recognitionTask?.finish()
+    }
+    
+    private func stopAndSaveRecording() {
+        guard isRecording else { return }
+        
+        isRecording = false
+        isPaused = false
+        
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.reset()
+        
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        
+        self.audioFile = nil
+        
+        stopTimer()
+        
+        guard let context = modelContext, let filename = tempAudioFilename else {
+            DispatchQueue.main.async { self.onRecordingFinished?() }
+            return
+        }
+        
+        if recordingDuration > 0.5 {
+            let newRecording = Recording(fileName: filename, createdAt: Date(), duration: recordingDuration)
+            newRecording.transcript = self.liveTranscript
+            
+            do {
+                let data = try JSONEncoder().encode(self.tempSegmentTimings)
+                newRecording.segmentTimingsData = data
+            } catch {
+                print("Failed to encode segment timings: \(error)")
+            }
+            
+            context.insert(newRecording)
+            do {
+                try context.save()
+            } catch {
+                print("Failed to save recording metadata: \(error)")
+            }
+        }
+        
+        recordingDuration = 0.0
+        liveTranscript = ""
+        tempSegmentTimings = []
+        audioLevels = Array(repeating: 0.0, count: 50)
+        
+        DispatchQueue.main.async {
+            self.onRecordingFinished?()
+        }
+    }
+    
+    private func updateAudioLevels(from buffer: AVAudioPCMBuffer) {
+        guard let channelData = buffer.floatChannelData else { return }
+        let channelDataValue = channelData.pointee
+        let channelDataValueArray = stride(from: 0, to: Int(buffer.frameLength), by: buffer.stride).map{ channelDataValue[$0] }
+        
+        let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
+        let normalizedRms = min(max(0, rms * 5), 1)
+        
+        DispatchQueue.main.async {
+            self.audioLevels.removeFirst()
+            self.audioLevels.append(normalizedRms)
+        }
+    }
+    
+    private func showError(_ message: String) {
+        Task { @MainActor in
+            self.errorMessage = message
+            if self.isRecording { self.stopAndSaveRecording() }
+            try? await Task.sleep(nanoseconds: 200_000_000) //0.2 second
+            self.showErrorAlert = true
+        }
+    }
+    
+    @objc private func handleRouteChange(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+            return
+        }
+        
+        switch reason {
+        case .override, .oldDeviceUnavailable:
+            if isRecording {
+                self.showError("Audio device changed. Recording stopped and saved.")
+            } else {
+                audioEngine = AVAudioEngine()
+            }
+        default: break
+        }
+    }
+    
+    @objc func handleInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+        
+        switch type {
+        case .began:
+            if isRecording && !isPaused {
+                pauseRecording()
+            }
+        case .ended:
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) && isPaused {
+                resumeRecording()
+            }
+        default: ()
+        }
+    }
+    
+    private func hasSufficientStorage(thresholdMB: Double = 50.0) -> Bool {
+        let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+        do {
+            let attributes = try FileManager.default.attributesOfFileSystem(forPath: path)
+            if let freeSize = attributes[.systemFreeSize] as? NSNumber {
+                let freeSpaceMB = freeSize.doubleValue / (1024 * 1024)
+                return freeSpaceMB > thresholdMB
+            }
+        } catch {
+            print("Error getting storage attributes: \(error)")
+        }
+        return false
+    }
+    
+    private func startTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            self?.recordingDuration += 0.05
+        }
+    }
+    
+    private func stopTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+    }
+}
+
+extension AudioRecorder: SFSpeechRecognizerDelegate {}
