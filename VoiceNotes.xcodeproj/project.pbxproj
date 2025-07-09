@@ -33,7 +33,7 @@
 		929A9DA72E1C068B00E3CCB9 /* Exceptions for "VoiceNotes" folder in "VoiceNotes" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Application/Info.plist,
+				Info.plist,
 			);
 			target = 929A9D5E2E1BFDD700E3CCB9 /* VoiceNotes */;
 		};
