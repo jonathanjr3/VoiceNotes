@@ -17,6 +17,8 @@ struct VoiceNotesView: View {
     @State private var isShowingRecordingView = false
     @State private var isShowingSettingsView = false
     @State private var editMode: EditMode = .inactive
+    @State private var isShowingDateFilter = false
+    @State private var filterDate: Date?
     
     var body: some View {
         NavigationStack {
@@ -24,7 +26,7 @@ struct VoiceNotesView: View {
                 if !permissionsManager.canRecord {
                     PermissionsNoticeView()
                 } else {
-                    RecordingsListView(searchText: searchText)
+                    RecordingsListView(searchText: searchText, filterDate: filterDate)
                         .environment(\.editMode, $editMode)
                 }
                 
@@ -53,7 +55,10 @@ struct VoiceNotesView: View {
                         }
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("Filter", systemImage: "line.3.horizontal.decrease.circle") {
+                        isShowingDateFilter = true
+                    }
                     Button("Settings", systemImage: "gear") {
                         isShowingSettingsView = true
                     }
@@ -71,6 +76,10 @@ struct VoiceNotesView: View {
             }
             .sheet(isPresented: $isShowingSettingsView) {
                 SettingsView()
+            }
+            .sheet(isPresented: $isShowingDateFilter) {
+                DateFilterView(filterDate: $filterDate)
+                    .presentationDetents([.medium])
             }
             .alert("Error", isPresented: $audioRecorder.showErrorAlert, actions: {
                 Button("OK") {

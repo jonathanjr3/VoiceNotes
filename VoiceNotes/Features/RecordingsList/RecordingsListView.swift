@@ -15,26 +15,48 @@ struct RecordingsListView: View {
     @State private var selection = Set<UUID>()
     
     private let searchText: String
+    private var filterDate: Date?
     
-    init(searchText: String) {
+    init(searchText: String, filterDate: Date?) {
         self.searchText = searchText
+        self.filterDate = filterDate
         
-        // Predicate used for search queries
-        let predicate = #Predicate<Recording> { recording in
-            if searchText.isEmpty {
-                return true
+        let predicate: Predicate<Recording>?
+        
+        if let filterDate {
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: filterDate)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+            
+            if !searchText.isEmpty {
+                predicate = #Predicate<Recording> { recording in
+                    (recording.createdAt >= startOfDay && recording.createdAt < endOfDay) &&
+                    (recording.title.localizedStandardContains(searchText) ||
+                     recording.transcript.localizedStandardContains(searchText))
+                }
             } else {
-                return recording.title.localizedStandardContains(searchText) ||
+                predicate = #Predicate<Recording> { recording in
+                    recording.createdAt >= startOfDay && recording.createdAt < endOfDay
+                }
+            }
+        } else if !searchText.isEmpty {
+            predicate = #Predicate<Recording> { recording in
+                recording.title.localizedStandardContains(searchText) ||
                 recording.transcript.localizedStandardContains(searchText)
             }
+        } else {
+            // No filters applied
+            predicate = nil
         }
         
+        // The final predicate is used to initialize the query.
+        // A nil predicate means no filtering will occur.
         _recordings = Query(filter: predicate, sort: [SortDescriptor(\.createdAt, order: .reverse)])
     }
     
     var body: some View {
         if recordings.isEmpty {
-            if searchText.isEmpty {
+            if searchText.isEmpty && filterDate == nil {
                 ContentUnavailableView("No Recordings Yet", systemImage: "mic.slash")
             } else {
                 ContentUnavailableView.search(text: searchText)
