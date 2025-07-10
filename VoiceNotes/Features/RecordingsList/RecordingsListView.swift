@@ -45,35 +45,51 @@ struct RecordingsListView: View {
                 recording.transcript.localizedStandardContains(searchText)
             }
         } else {
-            // No filters applied
             predicate = nil
         }
         
-        // The final predicate is used to initialize the query.
-        // A nil predicate means no filtering will occur.
         _recordings = Query(filter: predicate, sort: [SortDescriptor(\.createdAt, order: .reverse)])
+    }
+    
+    private var groupedRecordings: [Date: [Recording]] {
+        guard !recordings.isEmpty else { return [:] }
+        return Dictionary(grouping: recordings) { recording in
+            Calendar.current.startOfDay(for: recording.createdAt)
+        }
+    }
+    
+    private var sortedDates: [Date] {
+        groupedRecordings.keys.sorted(by: >)
     }
     
     var body: some View {
         if recordings.isEmpty {
-            if searchText.isEmpty && filterDate == nil {
+            if filterDate == nil && searchText.isEmpty {
                 ContentUnavailableView("No Recordings Yet", systemImage: "mic.slash")
             } else {
                 ContentUnavailableView.search(text: searchText)
             }
         } else {
-            List(recordings, id: \.id, selection: $selection) { recording in
-                NavigationLink {
-                    PlaybackView(recording: recording)
-                } label: {
-                    RecordingRowView(recording: recording)
-                }
-                .swipeActions(allowsFullSwipe: true, content: {
-                    Button("Delete", systemImage: "trash.fill", role: .destructive) {
-                        delete(recording)
-                        saveContext()
+            List(selection: $selection) {
+                ForEach(sortedDates, id: \.self) { date in
+                    Section(header: Text(sectionHeaderTitle(for: date))) {
+                        if let recordingsForDate = groupedRecordings[date] {
+                            ForEach(recordingsForDate) { recording in
+                                NavigationLink {
+                                    PlaybackView(recording: recording)
+                                } label: {
+                                    RecordingRowView(recording: recording)
+                                }
+                                .swipeActions(allowsFullSwipe: true, content: {
+                                    Button("Delete", systemImage: "trash.fill", role: .destructive) {
+                                        delete(recording)
+                                        saveContext()
+                                    }
+                                })
+                            }
+                        }
                     }
-                })
+                }
             }
             .toolbar {
                 ToolbarItemGroup(placement: .bottomBar) {
@@ -89,6 +105,17 @@ struct RecordingsListView: View {
                 }
             }
         }
+    }
+    
+    private func sectionHeaderTitle(for date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Today"
+        }
+        if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        }
+        return date.formatted(date: .long, time: .omitted)
     }
     
     private func deleteSelectedRecordings() {
