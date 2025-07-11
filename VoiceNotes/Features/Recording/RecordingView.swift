@@ -12,6 +12,12 @@ struct RecordingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving = false
     
+    private var buttonTitle: String {
+        if audioRecorder.isRecording && !audioRecorder.isPaused { return "Pause" }
+        else if audioRecorder.isRecording && audioRecorder.isPaused { return "Resume" }
+        else { return "Start" }
+    }
+    
     var body: some View {
         ZStack {
             VStack {
@@ -56,24 +62,30 @@ struct RecordingView: View {
                         .padding(.bottom, 10)
                     }
                     
-                    Button(action: {
+                    Button {
                         if !audioRecorder.isRecording {
                             audioRecorder.startRecording()
+                        } else if audioRecorder.isPaused {
+                            audioRecorder.resumeRecording()
                         } else {
-                            if audioRecorder.isPaused {
-                                audioRecorder.resumeRecording()
-                            } else {
-                                audioRecorder.pauseRecording()
-                            }
+                            audioRecorder.pauseRecording()
                         }
-                    }) {
-                        Image(systemName: audioRecorder.isRecording && !audioRecorder.isPaused ? "pause.circle.fill" : "record.circle")
-                            .symbolRenderingMode(.palette)
-                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
-                            .foregroundStyle(Color.accentColor, .white)
-                            .font(.system(size: 80))
+                    } label: {
+                        Text(buttonTitle)
+                            .font(.title2)
+                            .bold()
+                            .foregroundStyle(Color.white)
+                            .frame(
+                                width: audioRecorder.recordingDuration > 0 ? 180 : 80, // Animate from 80 (circle) to 180 (capsule)
+                                height: audioRecorder.recordingDuration > 0 ? 60 : 80  // Animate from 80 (circle) to 60 (capsule)
+                            )
+                            .background {
+                                CircleToCapsule(animatableParameter: audioRecorder.recordingDuration > 0 ? 0 : 1)
+                                    .fill(Color.red)
+                                    .stroke(Color.white, lineWidth: 2)
+                            }
                     }
-                    .animation(.bouncy, value: audioRecorder.isPaused)
+                    .animation(.smooth, value: audioRecorder.isRecording)
                 }
                 .padding(.bottom, 40)
             }

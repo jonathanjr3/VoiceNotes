@@ -9,8 +9,9 @@ import SwiftUI
 import AVFoundation
 import SwiftData
 import Speech
+import Accelerate
 
-@Observable final class AudioRecorder: NSObject {
+@Observable final class AudioRecorder {
     var isRecording = false
     var isPaused = false
     var recordingDuration: TimeInterval = 0.0
@@ -26,7 +27,7 @@ import Speech
     
     var onRecordingFinished: (() -> Void)?
     
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
+    private let speechRecognizer = SFSpeechRecognizer()!
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var audioEngine = AVAudioEngine()
@@ -36,11 +37,13 @@ import Speech
     private var tempAudioFilename: String?
     
     deinit {
+        if isRecording {
+            stopAndSaveRecording()
+        }
         NotificationCenter.default.removeObserver(self)
     }
     
-    override init() {
-        super.init()
+    init() {
         NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange), name: AVAudioSession.routeChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption), name: AVAudioSession.interruptionNotification, object: nil)
     }
@@ -59,10 +62,10 @@ import Speech
         
         let recordingSession = AVAudioSession.sharedInstance()
         do {
-            try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .allowBluetooth, .allowBluetoothA2DP])
+            try recordingSession.setCategory(.record, mode: .measurement, options: .allowBluetooth)
             try recordingSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            showError("Failed to set up recording session: \(error.localizedDescription)")
+            showError("Failed to set up audio session: \(error.localizedDescription)")
             return
         }
         
@@ -76,16 +79,12 @@ import Speech
         
         recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }
-            
             var isFinal = false
             if let result = result {
                 self.liveTranscript = result.bestTranscription.formattedString
-                self.tempSegmentTimings = result.bestTranscription.segments.map { segment in
-                    SegmentTiming(text: segment.substring, startTime: segment.timestamp)
-                }
+                self.tempSegmentTimings = result.bestTranscription.segments.map { SegmentTiming(text: $0.substring, startTime: $0.timestamp) }
                 isFinal = result.isFinal
             }
-            
             if error != nil || isFinal {
                 self.stopAndSaveRecording()
             }
@@ -110,20 +109,19 @@ import Speech
         
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] (buffer, time) in
             guard let self = self else { return }
-            
             self.recognitionRequest?.append(buffer)
-            
             do {
                 try self.audioFile?.write(from: buffer)
             } catch {
                 print("Error writing audio buffer to file: \(error)")
             }
-            
             self.updateAudioLevels(from: buffer)
         }
         
         do {
+            audioEngine.prepare()
             try audioEngine.start()
+            
             recordingDuration = 0.0
             isRecording = true
             isPaused = false
@@ -152,7 +150,9 @@ import Speech
     }
     
     func stopRecording() {
-        recognitionTask?.finish()
+        if isRecording {
+            recognitionTask?.finish()
+        }
     }
     
     private func stopAndSaveRecording() {
@@ -160,10 +160,12 @@ import Speech
         
         isRecording = false
         isPaused = false
+        stopTimer()
         
-        audioEngine.stop()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
         audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.reset()
         
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
@@ -172,7 +174,13 @@ import Speech
         
         self.audioFile = nil
         
-        stopTimer()
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
+        
+        audioEngine.reset()
         
         guard let context = modelContext, let filename = tempAudioFilename else {
             DispatchQueue.main.async { self.onRecordingFinished?() }
@@ -211,12 +219,13 @@ import Speech
     private func updateAudioLevels(from buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.floatChannelData else { return }
         let channelDataValue = channelData.pointee
-        let channelDataValueArray = stride(from: 0, to: Int(buffer.frameLength), by: buffer.stride).map{ channelDataValue[$0] }
         
-        let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
+        var rms: Float = 0.0
+        vDSP_rmsqv(channelDataValue, vDSP_Stride(buffer.stride), &rms, vDSP_Length(buffer.frameLength))
+        
         let normalizedRms = min(max(0, rms * 5), 1)
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.audioLevels.removeFirst()
             self.audioLevels.append(normalizedRms)
         }
@@ -234,53 +243,44 @@ import Speech
     @objc private func handleRouteChange(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
-              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
-            return
-        }
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
         
-        switch reason {
-        case .override, .oldDeviceUnavailable:
+        if reason == .oldDeviceUnavailable || reason == .override {
             if isRecording {
                 self.showError("Audio device changed. Recording stopped and saved.")
-            } else {
-                audioEngine = AVAudioEngine()
             }
-        default: break
         }
     }
     
     @objc func handleInterruption(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-            return
-        }
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
         
-        switch type {
-        case .began:
+        if type == .began {
             if isRecording && !isPaused {
                 pauseRecording()
             }
-        case .ended:
-            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-            if options.contains(.shouldResume) && isPaused {
-                resumeRecording()
+        } else if type == .ended {
+            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) && isPaused {
+                    resumeRecording()
+                }
             }
-        default: ()
         }
     }
     
     private func hasSufficientStorage(thresholdMB: Double = 50.0) -> Bool {
-        let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
-        do {
-            let attributes = try FileManager.default.attributesOfFileSystem(forPath: path)
-            if let freeSize = attributes[.systemFreeSize] as? NSNumber {
-                let freeSpaceMB = freeSize.doubleValue / (1024 * 1024)
-                return freeSpaceMB > thresholdMB
+        if let path = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first {
+            do {
+                let attributes = try FileManager.default.attributesOfFileSystem(forPath: path)
+                if let freeSize = attributes[.systemFreeSize] as? NSNumber {
+                    return (freeSize.doubleValue / (1024 * 1024)) > thresholdMB
+                }
+            } catch {
+                print("Error getting storage attributes: \(error)")
             }
-        } catch {
-            print("Error getting storage attributes: \(error)")
         }
         return false
     }
@@ -297,5 +297,3 @@ import Speech
         recordingTimer = nil
     }
 }
-
-extension AudioRecorder: SFSpeechRecognizerDelegate {}
