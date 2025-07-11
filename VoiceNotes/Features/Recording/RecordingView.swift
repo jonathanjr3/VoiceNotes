@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct RecordingView: View {
-    var audioRecorder: AudioRecorder
+    @Environment(AudioRecorder.self) private var audioRecorder: AudioRecorder
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving = false
     
