@@ -18,29 +18,21 @@ import AVFoundation
     private var audioPlayer: AVAudioPlayer?
     private var displayLink: CADisplayLink?
     private var segmentTimings: [SegmentTiming] = []
-    private var headphonesConnected: Bool = false
     private let playbackSession = AVAudioSession.sharedInstance()
     
-    override init() {
-        super.init()
-        NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange), name: AVAudioSession.routeChangeNotification, object: nil)
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-    
     func prepareAudioPlayback(recording: Recording) {
+        NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange), name: AVAudioSession.routeChangeNotification, object: nil)
+        
         self.segmentTimings = recording.segmentTimings
         
         do {
-            try playbackSession.setCategory(.playback, mode: .default)
+            try playbackSession.setCategory(.playback, mode: .default, options: [.duckOthers])
         } catch {
             print("Setting up playback session failed: \(error)")
         }
         
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: recording.fileURL)
+            audioPlayer = try AVAudioPlayer(contentsOf: recording.fileURL, fileTypeHint: AVFileType.m4a.rawValue)
             audioPlayer?.delegate = self
             audioPlayer?.isMeteringEnabled = true
             duration = audioPlayer?.duration ?? 0
@@ -50,6 +42,8 @@ import AVFoundation
     }
     
     func stopPlayback() {
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+        
         audioPlayer?.stop()
         try? playbackSession.setActive(false)
         isPlaying = false
@@ -60,14 +54,13 @@ import AVFoundation
     
     func pausePlayback() {
         audioPlayer?.pause()
-        try? playbackSession.setActive(false)
         isPlaying = false
         stopDisplayLink()
     }
     
     func resumePlayback() {
+        try? playbackSession.setActive(true, options: .notifyOthersOnDeactivation)
         audioPlayer?.play()
-        try? playbackSession.setActive(true)
         isPlaying = true
         startDisplayLink()
     }
@@ -79,6 +72,7 @@ import AVFoundation
     }
     
     private func startDisplayLink() {
+        displayLink?.invalidate()
         displayLink = CADisplayLink(target: self, selector: #selector(updatePlaybackTime))
         displayLink?.add(to: .current, forMode: .default)
     }
@@ -104,11 +98,14 @@ import AVFoundation
     @objc func handleRouteChange(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
-              let _ = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
             return
         }
         
-        pausePlayback()
+        // If the old device (e.g., headphones) is unavailable, pause playback.
+        if reason == .oldDeviceUnavailable && isPlaying {
+            pausePlayback()
+        }
     }
     
     private func normalize(power: Float) -> Float {
@@ -120,6 +117,7 @@ import AVFoundation
     }
     
     private func updateHighlightedSegment() {
+        // Find the index of the last segment whose start time is before or at the current time
         let index = segmentTimings.lastIndex { $0.startTime <= currentPlaybackTime }
         if highlightedSegmentIndex != index {
             highlightedSegmentIndex = index
@@ -131,8 +129,5 @@ extension AudioPlayer: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         isPlaying = false
         stopDisplayLink()
-        currentPlaybackTime = 0
-        highlightedSegmentIndex = nil
-        playbackLevels = Array(repeating: 0.0, count: 50)
     }
 }
