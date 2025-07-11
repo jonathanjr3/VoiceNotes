@@ -84,9 +84,7 @@ import Accelerate
                 isFinal = result.isFinal
             }
             if error != nil || isFinal {
-                DispatchQueue.main.sync {
-                    self.stopAndSaveRecording()
-                }
+                self.stopAndSaveRecording()
             }
         }
         
@@ -101,7 +99,10 @@ import Accelerate
         outputSettings[AVNumberOfChannelsKey] = inputFormat.channelCount
         
         do {
-            self.audioFile = try AVAudioFile(forWriting: audioFileURL, settings: outputSettings)
+            try FileManager.default.createDirectory(at: documentPath, withIntermediateDirectories: true, attributes: nil)
+            let audioFile = try AVAudioFile(forWriting: audioFileURL, settings: outputSettings)
+            try (audioFileURL as NSURL).setResourceValue(URLFileProtection.completeUnlessOpen, forKey: .fileProtectionKey)
+            self.audioFile = audioFile
         } catch {
             showError("Failed to create audio file: \(error.localizedDescription)")
             return
