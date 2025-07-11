@@ -19,14 +19,12 @@ import Accelerate
     var showErrorAlert = false
     var errorMessage = ""
     var audioLevels: [Float] = Array(repeating: 0.0, count: 50)
+    var modelContext: ModelContext?
+    var onRecordingFinished: (() -> Void)?
     
     @ObservationIgnored @AppStorage("audioQuality") private var audioQualitySetting: AudioQuality.RawValue = AudioQuality.medium.rawValue
     
     private var recordingTimer: Timer?
-    private var modelContext: ModelContext?
-    
-    var onRecordingFinished: (() -> Void)?
-    
     private let speechRecognizer = SFSpeechRecognizer()!
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -38,7 +36,7 @@ import Accelerate
     
     deinit {
         if isRecording {
-            stopAndSaveRecording()
+            stopAndSaveRecording(isTerminating: true)
         }
         NotificationCenter.default.removeObserver(self)
     }
@@ -86,7 +84,9 @@ import Accelerate
                 isFinal = result.isFinal
             }
             if error != nil || isFinal {
-                self.stopAndSaveRecording()
+                DispatchQueue.main.sync {
+                    self.stopAndSaveRecording()
+                }
             }
         }
         
@@ -155,7 +155,7 @@ import Accelerate
         }
     }
     
-    private func stopAndSaveRecording() {
+    func stopAndSaveRecording(isTerminating: Bool = false) {
         guard isRecording else { return }
         
         isRecording = false
@@ -187,22 +187,40 @@ import Accelerate
             return
         }
         
+        let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioFileURL = documentPath.appendingPathComponent(filename)
+        
+        var newRecording: Recording?
         if recordingDuration > 0.5 {
-            let newRecording = Recording(fileName: filename, createdAt: Date(), duration: recordingDuration)
-            newRecording.transcript = self.liveTranscript
+            newRecording = Recording(fileName: filename, createdAt: Date(), duration: recordingDuration)
             
-            do {
-                let data = try JSONEncoder().encode(self.tempSegmentTimings)
-                newRecording.segmentTimingsData = data
-            } catch {
-                print("Failed to encode segment timings: \(error)")
+            if !isTerminating {
+                newRecording?.transcript = self.liveTranscript
+                do {
+                    let data = try JSONEncoder().encode(self.tempSegmentTimings)
+                    newRecording?.segmentTimingsData = data
+                } catch {
+                    print("Failed to encode segment timings: \(error)")
+                }
+            } else {
+                newRecording?.isTranscriptFinal = false
+                newRecording?.transcript = "Transcript processing..."
             }
             
-            context.insert(newRecording)
             do {
-                try context.save()
+                let audioData = try Data(contentsOf: audioFileURL)
+                try audioData.write(to: audioFileURL)
             } catch {
-                print("Failed to save recording metadata: \(error)")
+                print("Failed to save audio file: \(error)")
+            }
+            
+            if let newRecording = newRecording {
+                context.insert(newRecording)
+                do {
+                    try context.save()
+                } catch {
+                    print("Failed to save recording metadata: \(error)")
+                }
             }
         }
         
@@ -234,7 +252,11 @@ import Accelerate
     private func showError(_ message: String) {
         Task { @MainActor in
             self.errorMessage = message
-            if self.isRecording { self.stopAndSaveRecording() }
+            if self.isRecording {
+                DispatchQueue.main.sync {
+                    self.stopAndSaveRecording(isTerminating: true)
+                }
+            }
             try? await Task.sleep(nanoseconds: 200_000_000) //0.2 second
             self.showErrorAlert = true
         }

@@ -17,6 +17,7 @@ final class Recording {
     var title: String
     var transcript: String = ""
     var segmentTimingsData: Data?
+    var isTranscriptFinal: Bool = true
     
     var fileURL: URL {
         let docPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]

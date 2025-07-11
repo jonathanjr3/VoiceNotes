@@ -157,7 +157,7 @@ struct RecordingRowView: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(recording.title)
                 .font(.headline)
-            Text(recording.transcript)
+            Text(recording.isTranscriptFinal ? recording.transcript : "Transcribing audio...")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

@@ -9,10 +9,10 @@ import SwiftUI
 
 struct VoiceNotesView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AudioRecorder.self) private var audioRecorder
     
-    @State private var audioRecorder = AudioRecorder()
     @State private var permissionsManager = PermissionsManager()
-    
+    @State private var transcriptionService = TranscriptionService()
     @State private var searchText = ""
     @State private var isShowingRecordingView = false
     @State private var isShowingSettingsView = false
@@ -70,9 +70,10 @@ struct VoiceNotesView: View {
                 if permissionsManager.micPermission == .undetermined || permissionsManager.speechPermission == .notDetermined {
                     permissionsManager.requestPermissions()
                 }
+                transcriptionService.processPendingRecordings(modelContext: modelContext)
             }
             .sheet(isPresented: $isShowingRecordingView) {
-                RecordingView(audioRecorder: audioRecorder)
+                RecordingView()
             }
             .sheet(isPresented: $isShowingSettingsView) {
                 SettingsView()
@@ -81,7 +82,10 @@ struct VoiceNotesView: View {
                 DateFilterView(filterDate: $filterDate)
                     .presentationDetents([.medium])
             }
-            .alert("Error", isPresented: $audioRecorder.showErrorAlert, actions: {
+            .alert("Error", isPresented: Binding(
+                get: { audioRecorder.showErrorAlert },
+                set: { audioRecorder.showErrorAlert = $0 }
+            ), actions: {
                 Button("OK") {
                     audioRecorder.showErrorAlert = false
                 }
