@@ -242,7 +242,8 @@ import Accelerate
         var rms: Float = 0.0
         vDSP_rmsqv(channelDataValue, vDSP_Stride(buffer.stride), &rms, vDSP_Length(buffer.frameLength))
         
-        let normalizedRms = min(max(0, rms * 5), 1)
+        let scalingFactor: Float = 40.0
+        let normalizedRms = min(max(0, rms * scalingFactor), 1)
         
         Task { @MainActor in
             self.audioLevels.removeFirst()
@@ -254,9 +255,7 @@ import Accelerate
         Task { @MainActor in
             self.errorMessage = message
             if self.isRecording {
-                DispatchQueue.main.sync {
-                    self.stopAndSaveRecording(isTerminating: true)
-                }
+                self.stopAndSaveRecording()
             }
             try? await Task.sleep(nanoseconds: 200_000_000) //0.2 second
             self.showErrorAlert = true
@@ -268,10 +267,11 @@ import Accelerate
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
         
-        if reason == .oldDeviceUnavailable || reason == .override {
+        if reason != .categoryChange {
             if isRecording {
                 self.showError("Audio device changed. Recording stopped and saved.")
             }
+            resetAudioSource()
         }
     }
     
@@ -318,5 +318,11 @@ import Accelerate
     private func stopTimer() {
         recordingTimer?.invalidate()
         recordingTimer = nil
+    }
+    
+    private func resetAudioSource() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine = AVAudioEngine()
     }
 }

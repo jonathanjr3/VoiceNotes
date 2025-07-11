@@ -113,7 +113,7 @@ import AVFoundation
         let maxDb: Float = 0.0
         let clampedPower = max(minDb, min(power, maxDb))
         let normalized = (clampedPower - minDb) / (maxDb - minDb)
-        return pow(normalized, 2)
+        return normalized
     }
     
     private func updateHighlightedSegment() {

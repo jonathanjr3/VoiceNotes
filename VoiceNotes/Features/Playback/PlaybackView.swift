@@ -34,22 +34,26 @@ struct PlaybackView: View {
                 .cornerRadius(12)
             
             VStack(alignment: .leading) {
-                HStack {
-                    Label("Transcript", systemImage: "quote.bubble")
-                        .font(.footnote)
-                    Spacer()
-                    Image(systemName: "document.on.document")
-                        .onTapGesture {
-                            UIPasteboard.general.string = recording.transcript
-                        }
-                }
-                Divider()
-                ScrollView {
-                    Text(highlightedTranscript())
-                        .textSelection(.enabled)
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if recording.transcript.isEmpty {
+                    ContentUnavailableView("Couldn't transcribe audio", systemImage: "text.badge.xmark")
+                } else {
+                    HStack {
+                        Label("Transcript", systemImage: "quote.bubble")
+                            .font(.footnote)
+                        Spacer()
+                        Image(systemName: "document.on.document")
+                            .onTapGesture {
+                                UIPasteboard.general.string = recording.transcript
+                            }
+                    }
+                    Divider()
+                    ScrollView {
+                        Text(highlightedTranscript())
+                            .textSelection(.enabled)
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
             .padding(.horizontal)

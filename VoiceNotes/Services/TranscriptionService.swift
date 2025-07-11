@@ -50,6 +50,9 @@ class TranscriptionService {
                     print("Failed to save final transcript: \(error)")
                 }
             } else if let error = error {
+                recording.isTranscriptFinal = true
+                recording.segmentTimingsData = nil
+                recording.transcript = ""
                 print("Re-transcription failed: \(error)")
             }
         }

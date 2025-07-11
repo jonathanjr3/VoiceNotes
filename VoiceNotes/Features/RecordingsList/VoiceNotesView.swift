@@ -56,7 +56,7 @@ struct VoiceNotesView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("Filter", systemImage: "line.3.horizontal.decrease.circle") {
+                    Button("Filter", systemImage: filterDate != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle") {
                         isShowingDateFilter = true
                     }
                     Button("Settings", systemImage: "gear") {

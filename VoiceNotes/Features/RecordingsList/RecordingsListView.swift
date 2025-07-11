@@ -155,8 +155,13 @@ struct RecordingRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(recording.title)
-                .font(.headline)
+            HStack {
+                Text(recording.title)
+                    .font(.headline)
+                if recording.isTranscriptFinal && !recording.transcript.isEmpty {
+                    Image(systemName: "quote.bubble")
+                }
+            }
             Text(recording.isTranscriptFinal ? recording.transcript : "Transcribing audio...")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
