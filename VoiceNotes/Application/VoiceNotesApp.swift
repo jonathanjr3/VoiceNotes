@@ -10,7 +10,7 @@ import SwiftData
 
 @main
 struct VoiceNotesApp: App {
-    @State private var audioRecorder = AudioRecorder()
+    @State private var audioRecorder = AudioRecorder.shared
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Recording.self,
@@ -27,7 +27,6 @@ struct VoiceNotesApp: App {
     var body: some Scene {
         WindowGroup {
             VoiceNotesView()
-                .environment(audioRecorder)
                 .onReceive(NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)) { _ in
                     audioRecorder.stopAndSaveRecording(isTerminating: true)
                 }

@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		92882B4D2E21CE9B001BF657 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 92882B4C2E21CE9B001BF657 /* WidgetKit.framework */; };
+		92882B4F2E21CE9B001BF657 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 92882B4E2E21CE9B001BF657 /* SwiftUI.framework */; };
+		92882B602E21CE9E001BF657 /* VoiceNotesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 92882B4A2E21CE9B001BF657 /* VoiceNotesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		92882B5E2E21CE9E001BF657 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 929A9D572E1BFDD700E3CCB9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 92882B492E21CE9B001BF657;
+			remoteInfo = VoiceNotesWidgetExtension;
+		};
 		929A9D6F2E1BFDD800E3CCB9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 929A9D572E1BFDD700E3CCB9 /* Project object */;
@@ -23,13 +36,47 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		92882B612E21CE9E001BF657 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				92882B602E21CE9E001BF657 /* VoiceNotesWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		92882B4A2E21CE9B001BF657 /* VoiceNotesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoiceNotesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		92882B4C2E21CE9B001BF657 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		92882B4E2E21CE9B001BF657 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		929A9D5F2E1BFDD700E3CCB9 /* VoiceNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		929A9D6E2E1BFDD800E3CCB9 /* VoiceNotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoiceNotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		929A9D782E1BFDD800E3CCB9 /* VoiceNotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoiceNotesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		92882B652E21CE9E001BF657 /* Exceptions for "VoiceNotesWidget" folder in "VoiceNotesWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 92882B492E21CE9B001BF657 /* VoiceNotesWidgetExtension */;
+		};
+		92882B682E21CF9D001BF657 /* Exceptions for "VoiceNotes" folder in "VoiceNotesWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Helpers/Extensions.swift,
+				Models/AudioQuality.swift,
+				Models/Recording.swift,
+				Services/AudioRecorder.swift,
+			);
+			target = 92882B492E21CE9B001BF657 /* VoiceNotesWidgetExtension */;
+		};
 		929A9DA72E1C068B00E3CCB9 /* Exceptions for "VoiceNotes" folder in "VoiceNotes" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -40,10 +87,24 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		92882B502E21CE9B001BF657 /* VoiceNotesWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				92882B652E21CE9E001BF657 /* Exceptions for "VoiceNotesWidget" folder in "VoiceNotesWidgetExtension" target */,
+			);
+			path = VoiceNotesWidget;
+			sourceTree = "<group>";
+		};
+		92882B6D2E21D0AB001BF657 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		929A9D612E1BFDD700E3CCB9 /* VoiceNotes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				929A9DA72E1C068B00E3CCB9 /* Exceptions for "VoiceNotes" folder in "VoiceNotes" target */,
+				92882B682E21CF9D001BF657 /* Exceptions for "VoiceNotes" folder in "VoiceNotesWidgetExtension" target */,
 			);
 			path = VoiceNotes;
 			sourceTree = "<group>";
@@ -61,6 +122,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		92882B472E21CE9B001BF657 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				92882B4F2E21CE9B001BF657 /* SwiftUI.framework in Frameworks */,
+				92882B4D2E21CE9B001BF657 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		929A9D5C2E1BFDD700E3CCB9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -85,12 +155,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		92882B4B2E21CE9B001BF657 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				92882B4C2E21CE9B001BF657 /* WidgetKit.framework */,
+				92882B4E2E21CE9B001BF657 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		929A9D562E1BFDD700E3CCB9 = {
 			isa = PBXGroup;
 			children = (
+				92882B6D2E21D0AB001BF657 /* Shared */,
 				929A9D612E1BFDD700E3CCB9 /* VoiceNotes */,
 				929A9D712E1BFDD800E3CCB9 /* VoiceNotesTests */,
 				929A9D7B2E1BFDD800E3CCB9 /* VoiceNotesUITests */,
+				92882B502E21CE9B001BF657 /* VoiceNotesWidget */,
+				92882B4B2E21CE9B001BF657 /* Frameworks */,
 				929A9D602E1BFDD700E3CCB9 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +183,7 @@
 				929A9D5F2E1BFDD700E3CCB9 /* VoiceNotes.app */,
 				929A9D6E2E1BFDD800E3CCB9 /* VoiceNotesTests.xctest */,
 				929A9D782E1BFDD800E3CCB9 /* VoiceNotesUITests.xctest */,
+				92882B4A2E21CE9B001BF657 /* VoiceNotesWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +191,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		92882B492E21CE9B001BF657 /* VoiceNotesWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 92882B642E21CE9E001BF657 /* Build configuration list for PBXNativeTarget "VoiceNotesWidgetExtension" */;
+			buildPhases = (
+				92882B462E21CE9B001BF657 /* Sources */,
+				92882B472E21CE9B001BF657 /* Frameworks */,
+				92882B482E21CE9B001BF657 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				92882B502E21CE9B001BF657 /* VoiceNotesWidget */,
+				92882B6D2E21D0AB001BF657 /* Shared */,
+			);
+			name = VoiceNotesWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = VoiceNotesWidgetExtension;
+			productReference = 92882B4A2E21CE9B001BF657 /* VoiceNotesWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		929A9D5E2E1BFDD700E3CCB9 /* VoiceNotes */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 929A9D822E1BFDD800E3CCB9 /* Build configuration list for PBXNativeTarget "VoiceNotes" */;
@@ -115,12 +221,15 @@
 				929A9D5B2E1BFDD700E3CCB9 /* Sources */,
 				929A9D5C2E1BFDD700E3CCB9 /* Frameworks */,
 				929A9D5D2E1BFDD700E3CCB9 /* Resources */,
+				92882B612E21CE9E001BF657 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				92882B5F2E21CE9E001BF657 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				92882B6D2E21D0AB001BF657 /* Shared */,
 				929A9D612E1BFDD700E3CCB9 /* VoiceNotes */,
 			);
 			name = VoiceNotes;
@@ -186,6 +295,9 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					92882B492E21CE9B001BF657 = {
+						CreatedOnToolsVersion = 16.4;
+					};
 					929A9D5E2E1BFDD700E3CCB9 = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -218,11 +330,19 @@
 				929A9D5E2E1BFDD700E3CCB9 /* VoiceNotes */,
 				929A9D6D2E1BFDD800E3CCB9 /* VoiceNotesTests */,
 				929A9D772E1BFDD800E3CCB9 /* VoiceNotesUITests */,
+				92882B492E21CE9B001BF657 /* VoiceNotesWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		92882B482E21CE9B001BF657 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		929A9D5D2E1BFDD700E3CCB9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -247,6 +367,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		92882B462E21CE9B001BF657 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		929A9D5B2E1BFDD700E3CCB9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -271,6 +398,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		92882B5F2E21CE9E001BF657 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 92882B492E21CE9B001BF657 /* VoiceNotesWidgetExtension */;
+			targetProxy = 92882B5E2E21CE9E001BF657 /* PBXContainerItemProxy */;
+		};
 		929A9D702E1BFDD800E3CCB9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 929A9D5E2E1BFDD700E3CCB9 /* VoiceNotes */;
@@ -284,6 +416,62 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		92882B622E21CE9E001BF657 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = VoiceNotesWidget/VoiceNotesWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z5GPX9NT7Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VoiceNotesWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VoiceNotesWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jonathan.VoiceNotes.VoiceNotesWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		92882B632E21CE9E001BF657 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = VoiceNotesWidget/VoiceNotesWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z5GPX9NT7Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VoiceNotesWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VoiceNotesWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jonathan.VoiceNotes.VoiceNotesWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		929A9D802E1BFDD800E3CCB9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -420,7 +608,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record your voice notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to transcribe your voice memos.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -453,7 +642,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record your voice notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to transcribe your voice memos.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -546,6 +736,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		92882B642E21CE9E001BF657 /* Build configuration list for PBXNativeTarget "VoiceNotesWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				92882B622E21CE9E001BF657 /* Debug */,
+				92882B632E21CE9E001BF657 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		929A9D5A2E1BFDD700E3CCB9 /* Build configuration list for PBXProject "VoiceNotes" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
