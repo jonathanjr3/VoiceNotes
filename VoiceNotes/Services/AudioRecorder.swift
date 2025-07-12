@@ -10,8 +10,11 @@ import AVFoundation
 import SwiftData
 import Speech
 import Accelerate
+import ActivityKit
 
 @Observable final class AudioRecorder {
+    static let shared = AudioRecorder()
+    
     var isRecording = false
     var isPaused = false
     var recordingDuration: TimeInterval = 0.0
@@ -30,9 +33,10 @@ import Accelerate
     private var recognitionTask: SFSpeechRecognitionTask?
     private var audioEngine = AVAudioEngine()
     private var tempSegmentTimings: [SegmentTiming] = []
-    
     private var audioFile: AVAudioFile?
     private var tempAudioFilename: String?
+    private var recordingActivity: Activity<RecordingActivityAttributes>?
+    private var recordingStartDate: Date = Date()
     
     deinit {
         if isRecording {
@@ -41,7 +45,7 @@ import Accelerate
         NotificationCenter.default.removeObserver(self)
     }
     
-    init() {
+    private init() {
         NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange), name: AVAudioSession.routeChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption), name: AVAudioSession.interruptionNotification, object: nil)
     }
@@ -51,6 +55,22 @@ import Accelerate
     }
     
     func startRecording() {
+        startAudioEngine()
+        // Start the Live Activity
+        if ActivityAuthorizationInfo().areActivitiesEnabled {
+            recordingStartDate = Date()
+            let attributes = RecordingActivityAttributes(recordingStartDate: recordingStartDate)
+            let initialState = RecordingActivityAttributes.ContentState(recordingDuration: 0.0, hasFinishedRecording: false)
+            
+            do {
+                recordingActivity = try Activity.request(attributes: attributes, content: .init(state: initialState, staleDate: nil))
+            } catch {
+                print("Error starting Live Activity: \(String(describing: error))")
+            }
+        }
+    }
+    
+    private func startAudioEngine() {
         guard !isRecording else { return }
         
         guard hasSufficientStorage() else {
@@ -137,6 +157,9 @@ import Accelerate
         audioEngine.pause()
         stopTimer()
         isPaused = true
+        Task {
+            await recordingActivity?.end(nil, dismissalPolicy: .immediate)
+        }
     }
     
     func resumeRecording() {
@@ -145,11 +168,19 @@ import Accelerate
             try audioEngine.start()
             startTimer()
             isPaused = false
+                do {
+                    let attributes = RecordingActivityAttributes(recordingStartDate: recordingStartDate)
+                    let currentState = RecordingActivityAttributes.ContentState(recordingDuration: recordingDuration, hasFinishedRecording: false)
+                    recordingActivity = try Activity.request(attributes: attributes, content: .init(state: currentState, staleDate: nil))
+                } catch {
+                    print("Failed to start live activity after resuming")
+                }
         } catch {
             showError("Failed to resume recording.")
         }
     }
     
+    @MainActor
     func stopRecording() {
         if isRecording {
             recognitionTask?.finish()
@@ -196,9 +227,9 @@ import Accelerate
             newRecording = Recording(fileName: filename, createdAt: Date(), duration: recordingDuration)
             
             if !isTerminating {
-                newRecording?.transcript = self.liveTranscript
+                newRecording?.transcript = liveTranscript
                 do {
-                    let data = try JSONEncoder().encode(self.tempSegmentTimings)
+                    let data = try JSONEncoder().encode(tempSegmentTimings)
                     newRecording?.segmentTimingsData = data
                 } catch {
                     print("Failed to encode segment timings: \(error)")
@@ -225,14 +256,25 @@ import Accelerate
             }
         }
         
-        recordingDuration = 0.0
-        liveTranscript = ""
-        tempSegmentTimings = []
-        audioLevels = Array(repeating: 0.0, count: 50)
+        Task { @MainActor in
+            await recordingActivity?.update(.init(state: .init(recordingDuration: recordingDuration, hasFinishedRecording: true), staleDate: nil))
+            // Wait for the animation to complete
+            try? await Task.sleep(for: .seconds(2))
+            await recordingActivity?.end(nil, dismissalPolicy: .immediate)
+        }
+        
+        resetRecorderState()
         
         DispatchQueue.main.async {
             self.onRecordingFinished?()
         }
+    }
+    
+    private func resetRecorderState() {
+        recordingDuration = 0.0
+        liveTranscript = ""
+        tempSegmentTimings = []
+        audioLevels = Array(repeating: 0.0, count: 50)
     }
     
     private func updateAudioLevels(from buffer: AVAudioPCMBuffer) {
@@ -257,7 +299,7 @@ import Accelerate
             if self.isRecording {
                 self.stopAndSaveRecording()
             }
-            try? await Task.sleep(nanoseconds: 200_000_000) //0.2 second
+            try? await Task.sleep(for: .seconds(0.2))
             self.showErrorAlert = true
         }
     }

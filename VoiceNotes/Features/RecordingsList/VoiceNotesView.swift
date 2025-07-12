@@ -9,7 +9,7 @@ import SwiftUI
 
 struct VoiceNotesView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AudioRecorder.self) private var audioRecorder
+    private var audioRecorder = AudioRecorder.shared
     
     @State private var permissionsManager = PermissionsManager()
     @State private var transcriptionService = TranscriptionService()
